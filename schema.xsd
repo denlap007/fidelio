@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    xmlns:jxb="http://java.sun.com/xml/ns/jaxb"
+    jxb:version="2.0">
+ 
+<xs:annotation>
+    <xs:appinfo>
+        <jxb:globalBindings underscoreBinding="asCharInWord"/>
+    </xs:appinfo>
+</xs:annotation>
+
+
+    <!-- definition of simple types -->
+    <xs:simpleType name="port">
+        <xs:restriction base="xs:positiveInteger">
+            <xs:maxExclusive value="65535"/>
+            <xs:minExclusive value="1"/>
+        </xs:restriction>
+    </xs:simpleType>
+ 
+    <xs:simpleType name="stringList">
+        <xs:list itemType="xs:string"/>
+    </xs:simpleType>
+
+    <xs:simpleType name="portList">
+        <xs:list itemType="port"/>
+    </xs:simpleType>
+
+    <xs:simpleType name="accessMode">
+        <xs:restriction base="xs:token">
+            <xs:enumeration value="rw"/>
+            <xs:enumeration value="ro"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="netDriver">
+        <xs:restriction base="xs:token">
+            <xs:enumeration value="bridge"/>
+            <xs:enumeration value="overlay"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <xs:simpleType name="protocol">
+        <xs:restriction base="xs:token">
+            <xs:enumeration value="tcp"/>
+            <xs:enumeration value="udp"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <!-- definition of attributes -->
+
+    <!-- definition of complex types -->
+    <xs:complexType name="startElem">
+        <xs:simpleContent>
+            <xs:extension base="xs:string">
+                <xs:attribute name="abortOnFail" type="xs:boolean" default="true"></xs:attribute>
+            </xs:extension>
+        </xs:simpleContent>
+    </xs:complexType>
+
+    <xs:complexType name="startRes">
+        <xs:sequence> 
+            <xs:element name="preMain" type="startElem" minOccurs="0" maxOccurs="unbounded"/>
+            <xs:element name="main" type="xs:string"/>
+            <xs:element name="postMain" type="startElem" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="stopRes">
+        <xs:sequence> 
+            <xs:element name="preMain" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+            <xs:element name="main" type="xs:string"/>
+            <xs:element name="postMain" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="bindMnt">
+        <xs:annotation>
+            <xs:documentation>Represents a host path being bind mounted as a Volume in a Docker container. The Bind can be in read only or read write access mode.</xs:documentation>
+        </xs:annotation>
+        <xs:sequence>
+            <xs:element name="hostPath" type="xs:string"/>
+            <xs:element name="containerPath" type="xs:string"/>
+        </xs:sequence>
+        <xs:attribute name="accessMode" type="accessMode" default="rw"/>
+    </xs:complexType>
+
+    <xs:complexType name="copy">
+        <xs:sequence>
+            <xs:element name="hostPath" type="xs:string"/>
+            <xs:element name="containerPath" type="xs:string"/>
+        </xs:sequence>
+        <xs:attribute name="withRootDir" type="xs:boolean" default="false"/>
+    </xs:complexType>
+
+      <xs:complexType name="publishPort">
+        <xs:sequence>
+            <xs:element name="hostIp" type="xs:string" minOccurs="0"/>
+            <xs:element name="hostPort" type="port" minOccurs="0"/>
+            <xs:element name="containerPort" type="port"/>
+        </xs:sequence>
+        <xs:attribute name="protocol" type="protocol" default="tcp"/>
+    </xs:complexType>
+
+    <xs:complexType name="exposePort">
+        <xs:simpleContent>
+            <xs:extension base="port">
+                <xs:attribute name="protocol" type="protocol" default="tcp"/>
+            </xs:extension>
+        </xs:simpleContent>
+    </xs:complexType>
+
+     <xs:complexType name="exposePorts">
+        <xs:sequence>
+            <xs:element name="port" type="exposePort" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="docker">
+            <xs:sequence>
+                <xs:element name="image" type="xs:string"/>
+                <xs:element name="volumes" type="stringList" minOccurs="0"/>
+                <xs:element name="volumesFrom" type="stringList" minOccurs="0"/>
+                <xs:element name="bindMnt" type="bindMnt" minOccurs="0" maxOccurs="unbounded"/>
+                <xs:element name="copy" type="copy" minOccurs="0" maxOccurs="unbounded"/>
+                <xs:element name="exposePorts" type="exposePorts" minOccurs="0"/>
+                <xs:element name="publishPort" type="publishPort" minOccurs="0" maxOccurs="unbounded"/>
+                <xs:element name="publishAllPorts" type="xs:boolean" minOccurs="0"/>
+                <xs:element name="privileged" type="xs:boolean" minOccurs="0"/>
+            </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="tasks">
+        <xs:sequence>
+            <xs:element name="substEnv" type="substEnv"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="substEnv">
+        <xs:sequence>
+            <xs:element name="filePath" type="substEnvElem" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="substEnvElem">
+        <xs:simpleContent>
+            <xs:extension base="xs:anyURI">
+                <xs:attribute name="restoreOnExit" type="xs:boolean" default="true"/>
+            </xs:extension>
+        </xs:simpleContent>
+    </xs:complexType>
+
+    <!-- CONTAINER -->
+     <xs:complexType name="containerEnvironment">
+        <xs:sequence>
+            <xs:element name="host_port" type="port"/>
+            <xs:any minOccurs="0" maxOccurs="unbounded" processContents="skip"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="container" abstract="true">
+        <xs:sequence>
+            <xs:element name="serviceName" type="xs:token">
+                <xs:annotation>
+                    <xs:appinfo>
+                          <jxb:property name="conSrvName"/>
+                    </xs:appinfo>
+              </xs:annotation>
+            </xs:element>
+            <xs:element name="requires" type="stringList" minOccurs="0"/>
+            <xs:element name="docker" type="docker"/>
+            <xs:element name="start" type="startRes"/>
+            <xs:element name="stop" type="stopRes"/>
+            <xs:element name="tasks" type="tasks" minOccurs="0"/>
+            <xs:element name="env" type="containerEnvironment"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- DATA CONTAINER -->
+    <xs:complexType name="dataContainer">
+        <xs:complexContent>
+            <xs:extension base="container">
+                <xs:sequence>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+
+    <!-- WEB CONTAINER -->
+    <xs:complexType name="webContainer">
+        <xs:complexContent>
+            <xs:extension base="container">
+                <xs:sequence>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+
+    <!-- BUSINESS CONTAINER -->
+    <xs:complexType name="businessContainer">
+        <xs:complexContent>
+            <xs:extension base="container">
+                <xs:sequence>
+                </xs:sequence>
+            </xs:extension>
+        </xs:complexContent>
+    </xs:complexType>
+
+    <xs:complexType name="containers">
+        <xs:sequence>
+            <xs:element maxOccurs="unbounded" name="webContainer" type="webContainer"/>
+            <xs:element maxOccurs="unbounded" name="businessContainer" type="businessContainer"/>
+            <xs:element maxOccurs="unbounded" name="dataContainer" type="dataContainer"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- definition of root element -->
+    <xs:element name="webApp">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="containers" type="containers"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+</xs:schema>
